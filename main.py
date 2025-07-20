@@ -34,7 +34,7 @@ def check_ma_cross():
 
     latest = data.iloc[-1]
     prev = data.iloc[-2]
-
+    ncrossed = None
     crossed = None
     if prev["MA5"] < prev["MA40"] and latest["MA5"] > latest["MA40"]:
         crossed = "🟢 黃金交叉出現！"
@@ -46,6 +46,9 @@ def check_ma_cross():
         send_telegram(message)
         print(message)
     else:
+        ncrossed = "❌ 沒有交叉訊號"
+        message = f"{ncrossed}\n時間：{now.strftime('%Y-%m-%d %H:%M')}價格：{latest['Close']:.2f}"
+        send_telegram(message)
         print("❌ 沒有交叉訊號")
 
 scheduler = BackgroundScheduler()
