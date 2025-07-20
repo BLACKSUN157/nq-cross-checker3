@@ -3,61 +3,77 @@ import yfinance as yf
 import pandas as pd
 import requests
 from datetime import datetime
-from apscheduler.schedulers.background import BackgroundScheduler
 
 # === Telegram 設定 ===
 TELEGRAM_TOKEN = '8116446503:AAEuE74_HF0pITQ0k7H5Dy3Dp9-WuMHWY94'
 TELEGRAM_CHAT_ID = '8163295591'
 
+# === Flask App 初始化 ===
 app = Flask(__name__)
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
-    requests.post(url, json=payload)
+    payload = {
+        'chat_id': TELEGRAM_CHAT_ID,
+        'text': message
+    }
+    try:
+        requests.post(url, data=payload)
+    except Exception as e:
+        print(f"❌ 發送 Telegram 失敗: {e}")
 
-def check_ma_cross():
-    symbol = "NQ=F"
-    now = datetime.now()
-    print(f"🔁 [{now.strftime('%Y-%m-%d %H:%M:%S')}] 檢查中...")
-    data = yf.download(tickers=symbol, period="2d", interval="5m")
-    if data.empty:
-        print("❌ 資料下載失敗")
-        return
+def detect_cross():
+    symbol = 'NQ=F'
+    interval = '5m'
+    period = '5d'
 
-    data["MA5"] = data["Close"].rolling(window=5).mean()
-    data["MA40"] = data["Close"].rolling(window=40).mean()
+    try:
+        data = yf.download(tickers=symbol, interval=interval, period=period, auto_adjust=False, progress=False)
 
-    if len(data) < 41:
-        print("⏳ 資料不足，等待更多資料點")
-        return
+        if data.empty:
+            print("❌ 資料為空")
+            return "資料為空"
 
-    latest = data.iloc[-1]
-    prev = data.iloc[-2]
-    ncrossed = None
-    crossed = None
-    if prev["MA5"] < prev["MA40"] and latest["MA5"] > latest["MA40"]:
-        crossed = "🟢 黃金交叉出現！"
-    elif prev["MA5"] > prev["MA40"] and latest["MA5"] < latest["MA40"]:
-        crossed = "🔴 死亡交叉出現！"
+        data['MA5'] = data['Close'].rolling(window=5).mean()
+        data['MA40'] = data['Close'].rolling(window=40).mean()
+        data.dropna(inplace=True)
 
-    if crossed:
-        message = f"{crossed}\n時間：{now.strftime('%Y-%m-%d %H:%M')}價格：{latest['Close']:.2f}"
-        send_telegram(message)
-        print(message)
-    else:
-        ncrossed = "❌ 沒有交叉訊號"
-        message = f"{ncrossed}\n時間：{now.strftime('%Y-%m-%d %H:%M')}價格：{latest['Close']:.2f}"
-        send_telegram(message)
-        print("❌ 沒有交叉訊號")
+        last_price = data['Close'].iloc[-1]
+        last_ma5 = data['MA5'].iloc[-1]
+        last_ma40 = data['MA40'].iloc[-1]
+        last_time = data.index[-1]
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(check_ma_cross, 'interval', minutes=5)
-scheduler.start()
+        print(f"\n🕒 偵測時間：{now}（資料時間：{last_time}）")
 
+        if abs(last_ma5 - last_ma40) < 3:
+            msg = (
+                f"⚠️ MA5 與 MA40 接近（< 3 點）\n"
+                f"時間：{now}\n"
+                f"價格：{last_price}\n"
+                f"MA5: {last_ma5:.2f}\n"
+                f"MA40: {last_ma40:.2f}"
+            )
+            print(msg)
+            send_telegram(msg)
+            return msg
+        else:
+            status = f"📉 無接近訊號\n價格：{last_price}（MA5: {last_ma5:.2f}, MA40: {last_ma40:.2f}）"
+            print(status)
+            send_telegram(status)
+            return status
+
+    except Exception as e:
+        err_msg = f"⚠️ 發生錯誤：{e}"
+        print(err_msg)
+        return err_msg
+
+# === 路由：UptimeRobot Ping 時執行 ===
 @app.route('/')
-def index():
-    return "✅ NQ=F 交叉監控器運行中"
+def home():
+    result = detect_cross()
+    return result or "檢查完成"
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+# === Flask 主程式入口 ===
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080)
