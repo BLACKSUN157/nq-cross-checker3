@@ -42,8 +42,7 @@ def check_ma_cross():
         crossed = "🔴 死亡交叉出現！"
 
     if crossed:
-        message = f"{crossed}\n時間：{now.strftime('%Y-%m-%d %H:%M')}
-價格：{latest['Close']:.2f}"
+        message = f"{crossed}\n時間：{now.strftime('%Y-%m-%d %H:%M')}價格：{latest['Close']:.2f}"
         send_telegram(message)
         print(message)
     else:
