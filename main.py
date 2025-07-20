@@ -22,8 +22,7 @@ def send_telegram(message):
     except Exception as e:
         print(f"❌ 發送 Telegram 失敗: {e}")
 
-def detect_cross():
-    symbol = 'NQ=F'
+def detect_cross(symbol, name=""):
     interval = '5m'
     period = '5d'
 
@@ -31,8 +30,8 @@ def detect_cross():
         data = yf.download(tickers=symbol, interval=interval, period=period, auto_adjust=False, progress=False)
 
         if data.empty:
-            print("❌ 資料為空")
-            return "資料為空"
+            print(f"❌ [{name}] 資料為空")
+            return f"[{name}] 資料為空"
 
         data['MA5'] = data['Close'].rolling(window=5).mean()
         data['MA40'] = data['Close'].rolling(window=40).mean()
@@ -44,11 +43,11 @@ def detect_cross():
         last_time = data.index[-1]
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        print(f"\n🕒 偵測時間：{now}（資料時間：{last_time}）")
+        print(f"\n🕒 [{name}] 偵測時間：{now}（資料時間：{last_time}）")
 
         if abs(last_ma5 - last_ma40) < 3:
             msg = (
-                f"⚠️ MA5 與 MA40 接近（< 3 點）\n"
+                f"⚠️ [{name}] MA5 與 MA40 接近（< 3 點）\n"
                 f"時間：{now}\n"
                 f"價格：{last_price}\n"
                 f"MA5: {last_ma5:.2f}\n"
@@ -58,22 +57,24 @@ def detect_cross():
             send_telegram(msg)
             return msg
         else:
-            status = f"📉 無接近訊號\n價格：{last_price}（MA5: {last_ma5:.2f}, MA40: {last_ma40:.2f}）"
+            status = f"📉 [{name}] 無接近訊號\n價格：{last_price}（MA5: {last_ma5:.2f}, MA40: {last_ma40:.2f}）"
             print(status)
             send_telegram(status)
             return status
 
     except Exception as e:
-        err_msg = f"⚠️ 發生錯誤：{e}"
+        err_msg = f"⚠️ [{name}] 發生錯誤：{e}"
         print(err_msg)
         return err_msg
 
-# === 路由：UptimeRobot Ping 時執行 ===
+# === 路由：每次 Ping 都偵測兩個商品 ===
 @app.route('/')
 def home():
-    result = detect_cross()
-    return result or "檢查完成"
+    result_nq = detect_cross('NQ=F', name="小那斯達克")
+    result_txf = detect_cross('TXF1!', name="台指期")
+    return f"{result_nq}\n\n{result_txf}"
 
 # === Flask 主程式入口 ===
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
+
