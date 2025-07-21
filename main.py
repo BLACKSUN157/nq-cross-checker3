@@ -59,7 +59,7 @@ def detect_cross(symbol, name=""):
         else:
             status = f"📉 [{name}] 無接近訊號\n價格：{last_price}（MA5: {last_ma5:.2f}, MA40: {last_ma40:.2f}）"
             print(status)
-            send_telegram(status)
+          
             return status
 
     except Exception as e:
