@@ -71,7 +71,7 @@ def detect_cross(symbol, name=""):
 @app.route('/')
 def home():
     result_nq = detect_cross('NQ=F', name="小那斯達克")
-    result_txf = detect_cross('TWX&', name="台指期")
+    result_txf = detect_cross('WTX&', name="台指期")
     return f"{result_nq}\n\n{result_txf}"
 
 # === Flask 主程式入口 ===
