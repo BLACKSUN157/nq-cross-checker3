@@ -43,7 +43,11 @@ def detect_cross(symbol, name=""):
         last_time = data.index[-1]
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+        bias = (last_price - last_ma40) / last_ma40 * 100
+
         print(f"\n🕒 [{name}] 偵測時間：{now}（資料時間：{last_time}）")
+
+        messages = []
 
         if abs(last_ma5 - last_ma40) < 6:
             msg = (
@@ -53,28 +57,43 @@ def detect_cross(symbol, name=""):
                 f"MA5: {last_ma5:.2f}\n"
                 f"MA40: {last_ma40:.2f}"
             )
-            print(msg)
+            messages.append(msg)
             send_telegram(msg)
-            return msg
-        else:
-            status = f"📉 [{name}] 無接近訊號\n價格：{last_price}（MA5: {last_ma5:.2f}, MA40: {last_ma40:.2f}）"
+
+        if abs(bias) > 0.7:
+            bias_msg = (
+                f"📊 [{name}] 價格乖離警告\n"
+                f"時間：{now}\n"
+                f"價格：{last_price}\n"
+                f"MA40: {last_ma40:.2f}\n"
+                f"乖離率: {bias:.2f}%"
+            )
+            messages.append(bias_msg)
+            send_telegram(bias_msg)
+
+        if not messages:
+            status = (
+                f"📉 [{name}] 無接近或乖離訊號\n"
+                f"價格：{last_price}（MA5: {last_ma5:.2f}, MA40: {last_ma40:.2f}, 乖離率: {bias:.2f}%）"
+            )
             print(status)
-          
             return status
+        else:
+            return "\n\n".join(messages)
 
     except Exception as e:
         err_msg = f"⚠️ [{name}] 發生錯誤：{e}"
         print(err_msg)
         return err_msg
 
-# === 路由：每次 Ping 都偵測兩個商品 ===
+# === 路由：只偵測小那斯達克 ===
 @app.route('/')
 def home():
     result_nq = detect_cross('NQ=F', name="小那斯達克")
-    result_txf = detect_cross('^TWBF', name="台指期")
-    return f"{result_nq}\n\n{result_txf}"
+    return result_nq
 
 # === Flask 主程式入口 ===
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
+
 
