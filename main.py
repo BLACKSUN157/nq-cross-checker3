@@ -45,9 +45,9 @@ def detect_cross(symbol, name=""):
 
         print(f"\n🕒 [{name}] 偵測時間：{now}（資料時間：{last_time}）")
 
-        if abs(last_ma5 - last_ma40) < 3:
+        if abs(last_ma5 - last_ma40) < 6:
             msg = (
-                f"⚠️ [{name}] MA5 與 MA40 接近（< 3 點）\n"
+                f"⚠️ [{name}] MA5 與 MA40 接近（< 6 點）\n"
                 f"時間：{now}\n"
                 f"價格：{last_price}\n"
                 f"MA5: {last_ma5:.2f}\n"
