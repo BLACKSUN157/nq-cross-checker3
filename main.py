@@ -49,9 +49,9 @@ def detect_cross(symbol, name=""):
 
         messages = []
 
-        if abs(last_ma5 - last_ma40) < 6:
+        if abs(last_ma5 - last_ma40) < last_price * 0.000257:
             msg = (
-                f"⚠️ [{name}] MA5 與 MA40 接近（< 6 點）\n"
+                f"⚠️ [{name}] MA5 與 MA40 接近（< < 0.0257%）\n"
                 f"時間：{now}\n"
                 f"價格：{last_price}\n"
                 f"MA5: {last_ma5:.2f}\n"
@@ -93,7 +93,7 @@ def home():
     result_ym = detect_cross('YM=F', name="小道瓊")
     result_es = detect_cross('ES=F', name="小S&P")
     result_gc = detect_cross('GC=F', name="小黃金")
-    result_tw = detect_cross('TW=F', name="富時台灣指數")
+    result_tw = detect_cross('^TWFI', name="富時台灣指數")
     
     return "<br><br>".join([result_nq, result_ym, result_es, result_gc, result_tw])
 
