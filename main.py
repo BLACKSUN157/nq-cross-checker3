@@ -61,7 +61,7 @@ def detect_cross(symbol, name=""):
             messages.append(msg)
             send_telegram(msg)
 
-        if abs(bias) > 0.7:
+        if abs(bias) > 0.5:
             bias_msg = (
                 f"📊 [{name}] 價格乖離警告\n"
                 f"時間：{now}\n"
