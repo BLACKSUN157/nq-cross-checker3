@@ -93,7 +93,7 @@ def home():
     result_ym = detect_cross('YM=F', name="小道瓊")
     result_es = detect_cross('ES=F', name="小S&P")
     result_gc = detect_cross('GC=F', name="小黃金")
-    result_tw = detect_cross('^TWFI', name="富時台灣指數")
+    result_tw = detect_cross('NIY=F', name="富時台灣指數")
     
     return "<br><br>".join([result_nq, result_ym, result_es, result_gc, result_tw])
 
