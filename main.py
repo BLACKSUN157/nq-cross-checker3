@@ -49,9 +49,9 @@ def detect_cross(symbol, name=""):
 
         messages = []
 
-        if abs(last_ma5 - last_ma40) < last_price * 0.000257:
+        if abs(last_ma5 - last_ma40) < 6:
             msg = (
-                f"⚠️ [{name}] MA5 與 MA40 接近（< < 0.0257%）\n"
+                f"⚠️ [{name}] MA5 與 MA40 接近（< 6 點）\n"
                 f"時間：{now}\n"
                 f"價格：{last_price}\n"
                 f"MA5: {last_ma5:.2f}\n"
@@ -60,7 +60,7 @@ def detect_cross(symbol, name=""):
             messages.append(msg)
             send_telegram(msg)
 
-        if abs(bias) > 0.49:
+        if abs(bias) > 0.7:
             bias_msg = (
                 f"📊 [{name}] 價格乖離警告\n"
                 f"時間：{now}\n"
@@ -86,16 +86,11 @@ def detect_cross(symbol, name=""):
         print(err_msg)
         return err_msg
 
-# === 路由：監控多個商品 ===
+# === 路由：只偵測小那斯達克 ===
 @app.route('/')
 def home():
     result_nq = detect_cross('NQ=F', name="小那斯達克")
-    result_ym = detect_cross('YM=F', name="小道瓊")
-    result_es = detect_cross('ES=F', name="小S&P")
-    result_gc = detect_cross('GC=F', name="小黃金")
-    result_tw = detect_cross('NIY=F', name="225YEN")
-    
-    return "<br><br>".join([result_nq, result_ym, result_es, result_gc, result_tw])
+    return result_nq
 
 # === Flask 主程式入口 ===
 if __name__ == '__main__':
