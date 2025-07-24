@@ -79,7 +79,13 @@ def detect_cross(symbol, name=""):
             send_telegram(bias_msg)
 
         if not messages:
-            nmsg =(f"📉 [{name}] 無接近或乖離訊號（乖離率 {bias:.2f}%，門檻 {threshold:.2f}）")
+            nmsg = (
+                f"⚠️ [{name}] MA5 與 MA40 遠離（小於 0.0257%）\n"
+                f"時間：{now}\n"
+                f"價格：{last_price}\n"
+                f"MA5: {last_ma5:.2f}\n"
+                f"MA40: {last_ma40:.2f}"
+            )
              messages.append(nmsg)
             send_telegram(nmsg)
 
