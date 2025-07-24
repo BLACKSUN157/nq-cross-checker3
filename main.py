@@ -1,4 +1,5 @@
 from flask import Flask
+from apscheduler.schedulers.background import BackgroundScheduler
 import yfinance as yf
 import pandas as pd
 import requests
@@ -8,15 +9,23 @@ from datetime import datetime
 TELEGRAM_TOKEN = '8116446503:AAEuE74_HF0pITQ0k7H5Dy3Dp9-WuMHWY94'
 TELEGRAM_CHAT_ID = '8163295591'
 
-# === Flask App 初始化 ===
+# === 指數清單 ===
+INDEX_LIST = [
+    ("NQ=F", "小那斯達克"),
+    ("YM=F", "小道瓊"),
+    ("ES=F", "小S&P"),
+    ("GC=F", "小黃金"),
+    ("^TWII", "富時台灣指")  # 注意：此為現貨指數，不是期貨，Yahoo 上找不到 TXF1! 類期貨資料
+]
+
+# === App 初始化 ===
 app = Flask(__name__)
+scheduler = BackgroundScheduler()
+current_index = {"i": 0}  # 使用 mutable dict 以便跨排程記錄 index
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        'chat_id': TELEGRAM_CHAT_ID,
-        'text': message
-    }
+    payload = {'chat_id': TELEGRAM_CHAT_ID, 'text': message}
     try:
         requests.post(url, data=payload)
     except Exception as e:
@@ -28,10 +37,9 @@ def detect_cross(symbol, name=""):
 
     try:
         data = yf.download(tickers=symbol, interval=interval, period=period, auto_adjust=False, progress=False)
-
         if data.empty:
             print(f"❌ [{name}] 資料為空")
-            return f"[{name}] 資料為空"
+            return
 
         data['MA5'] = data['Close'].rolling(window=5).mean()
         data['MA40'] = data['Close'].rolling(window=40).mean()
@@ -42,17 +50,15 @@ def detect_cross(symbol, name=""):
         last_ma40 = data['MA40'].iloc[-1]
         last_time = data.index[-1]
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
         bias = (last_price - last_ma40) / last_ma40 * 100
+        threshold = last_price * 0.000257  # 約等於 0.0257%
 
         print(f"\n🕒 [{name}] 偵測時間：{now}（資料時間：{last_time}）")
-
         messages = []
 
-        # 改為以「目前價格的 0.0257%」為接近標準
-        if abs(last_ma5 - last_ma40) < last_price * 0.000257:
+        if abs(last_ma5 - last_ma40) < threshold:
             msg = (
-                f"⚠️ [{name}] MA5 與 MA40 接近（< 0.0257%）\n"
+                f"⚠️ [{name}] MA5 與 MA40 接近（小於 0.0257%）\n"
                 f"時間：{now}\n"
                 f"價格：{last_price}\n"
                 f"MA5: {last_ma5:.2f}\n"
@@ -73,36 +79,29 @@ def detect_cross(symbol, name=""):
             send_telegram(bias_msg)
 
         if not messages:
-            status = (
-                f"📉 [{name}] 無接近或乖離訊號\n"
-                f"價格：{last_price}（MA5: {last_ma5:.2f}, MA40: {last_ma40:.2f}, 乖離率: {bias:.2f}%）"
-            )
-            messages.append(status)
-            send_telegram(status)
-
-            print(status)
-            return status
-        else:
-            return "\n\n".join(messages)
+            print(f"📉 [{name}] 無接近或乖離訊號（乖離率 {bias:.2f}%，門檻 {threshold:.2f}）")
 
     except Exception as e:
-        err_msg = f"⚠️ [{name}] 發生錯誤：{e}"
-        print(err_msg)
-        return err_msg
+        print(f"⚠️ [{name}] 發生錯誤：{e}")
 
-# === 路由：檢查多個指數 ===
+# === 輪詢任務：每分鐘偵測一個指數 ===
+def scheduled_check():
+    i = current_index["i"]
+    symbol, name = INDEX_LIST[i]
+    detect_cross(symbol, name)
+    current_index["i"] = (i + 1) % len(INDEX_LIST)
+
+# === 頁面測試用 ===
 @app.route('/')
 def home():
-    result = []
-    result.append(detect_cross('NQ=F', name="小那斯達克"))
-    result.append(detect_cross('YM=F', name="小道瓊"))
-    result.append(detect_cross('ES=F', name="小S&P500"))
-    result.append(detect_cross('GC=F', name="小黃金"))
-    result.append(detect_cross('^TWII', name="富時台灣指數"))
-    return "<br><br>".join(result)
+    return "📡 指數輪流偵測服務已啟動"
 
 # === 主程式 ===
 if __name__ == '__main__':
+    scheduler.add_job(scheduled_check, 'interval', minutes=1)
+    scheduler.start()
+    print("✅ 每分鐘輪流偵測指數中...")
     app.run(host='0.0.0.0', port=8080)
+
 
 
