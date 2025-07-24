@@ -86,11 +86,15 @@ def detect_cross(symbol, name=""):
         print(err_msg)
         return err_msg
 
-# === 路由：只偵測小那斯達克 ===
+# === 路由：監控多個商品 ===
 @app.route('/')
 def home():
     result_nq = detect_cross('NQ=F', name="小那斯達克")
-    return result_nq
+    result_ym = detect_cross('YM=F', name="小道瓊")
+    result_es = detect_cross('ES=F', name="小S&P")
+    result_gc = detect_cross('GC=F', name="小黃金")
+
+    return "<br><br>".join([result_nq, result_ym, result_es, result_gc])
 
 # === Flask 主程式入口 ===
 if __name__ == '__main__':
