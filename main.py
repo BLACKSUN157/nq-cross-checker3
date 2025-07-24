@@ -79,7 +79,9 @@ def detect_cross(symbol, name=""):
             send_telegram(bias_msg)
 
         if not messages:
-            print(f"📉 [{name}] 無接近或乖離訊號（乖離率 {bias:.2f}%，門檻 {threshold:.2f}）")
+            nmsg =(f"📉 [{name}] 無接近或乖離訊號（乖離率 {bias:.2f}%，門檻 {threshold:.2f}）")
+             messages.append(nmsg)
+            send_telegram(nmsg)
 
     except Exception as e:
         print(f"⚠️ [{name}] 發生錯誤：{e}")
