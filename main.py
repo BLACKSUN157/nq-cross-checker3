@@ -49,9 +49,10 @@ def detect_cross(symbol, name=""):
 
         messages = []
 
-        if abs(last_ma5 - last_ma40) < 6:
+        # 改為以「目前價格的 0.0257%」為接近標準
+        if abs(last_ma5 - last_ma40) < last_price * 0.000257:
             msg = (
-                f"⚠️ [{name}] MA5 與 MA40 接近（< 6 點）\n"
+                f"⚠️ [{name}] MA5 與 MA40 接近（< 0.0257%）\n"
                 f"時間：{now}\n"
                 f"價格：{last_price}\n"
                 f"MA5: {last_ma5:.2f}\n"
@@ -77,8 +78,6 @@ def detect_cross(symbol, name=""):
                 f"價格：{last_price}（MA5: {last_ma5:.2f}, MA40: {last_ma40:.2f}, 乖離率: {bias:.2f}%）"
             )
             print(status)
-            messages.append(status)
-            send_telegram(status)
             return status
         else:
             return "\n\n".join(messages)
@@ -88,13 +87,19 @@ def detect_cross(symbol, name=""):
         print(err_msg)
         return err_msg
 
-# === 路由：只偵測小那斯達克 ===
+# === 路由：檢查多個指數 ===
 @app.route('/')
 def home():
-    result_nq = detect_cross('NQ=F', name="小那斯達克")
-    return result_nq
+    result = []
+    result.append(detect_cross('NQ=F', name="小那斯達克"))
+    result.append(detect_cross('YM=F', name="小道瓊"))
+    result.append(detect_cross('ES=F', name="小S&P500"))
+    result.append(detect_cross('GC=F', name="小黃金"))
+    result.append(detect_cross('^TWII', name="富時台灣指數"))
+    return "<br><br>".join(result)
 
-# === Flask 主程式入口 ===
+# === 主程式 ===
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
+
 
