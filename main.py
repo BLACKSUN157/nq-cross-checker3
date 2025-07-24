@@ -77,8 +77,6 @@ def detect_cross(symbol, name=""):
                 f"價格：{last_price}（MA5: {last_ma5:.2f}, MA40: {last_ma40:.2f}, 乖離率: {bias:.2f}%）"
             )
             print(status)
-            messages.append(status)
-            send_telegram(status)
             return status
         else:
             return "\n\n".join(messages)
