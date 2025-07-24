@@ -60,7 +60,7 @@ def detect_cross(symbol, name=""):
             messages.append(msg)
             send_telegram(msg)
 
-        if abs(bias) > 0.7:
+        if abs(bias) > 0.49:
             bias_msg = (
                 f"📊 [{name}] 價格乖離警告\n"
                 f"時間：{now}\n"
@@ -93,7 +93,7 @@ def home():
     result_ym = detect_cross('YM=F', name="小道瓊")
     result_es = detect_cross('ES=F', name="小S&P")
     result_gc = detect_cross('GC=F', name="小黃金")
-    result_tw = detect_cross('NIY=F', name="富時台灣指數")
+    result_tw = detect_cross('NIY=F', name="225YEN")
     
     return "<br><br>".join([result_nq, result_ym, result_es, result_gc, result_tw])
 
