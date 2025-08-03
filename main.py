@@ -51,7 +51,7 @@ def detect_cross(symbol, name=""):
         last_ma40 = data['MA40'].iloc[-1]
 
         if isinstance(last_price, pd.Series) or isinstance(last_ma5, pd.Series) or isinstance(last_ma40, pd.Series):
-        raise ValueError("❌ 資料異常：出現 Series 而非單一數值")
+           raise ValueError("❌ 資料異常：出現 Series 而非單一數值")
         last_time = data.index[-1]
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         bias = (last_price - last_ma40) / last_ma40 * 100
