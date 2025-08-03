@@ -81,16 +81,7 @@ def detect_cross(symbol, name=""):
             )
             messages.append(msg)
 
-        if not messages:
-            msg = (
-                f"📉 [{name}] 無接近或乖離訊號\n"
-                f"時間：{now}\n"
-                f"價格：{last_price:.2f}\n"
-                f"MA5: {last_ma5:.2f}\n"
-                f"MA40: {last_ma40:.2f}\n"
-                f"乖離率: {bias:.2f}%"
-            )
-            messages.append(msg)
+        
 
         # ✅ 無論是否有訊號都發送
         for msg in messages:
