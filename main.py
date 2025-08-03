@@ -52,7 +52,7 @@ def detect_cross(symbol, name=""):
         last_time = data.index[-1]
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         bias = (last_price - last_ma40) / last_ma40 * 100
-        threshold = last_price * 0.257  # 約 0.0257%
+        threshold = last_price * 0.000257  # 約 0.0257%
 
         print(f"\n🕒 [{name}] 偵測時間：{now}（資料時間：{last_time}）")
         messages = []
