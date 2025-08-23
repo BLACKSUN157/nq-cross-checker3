@@ -46,7 +46,7 @@ def macd_strategy():
     global last_signal
     try:
         # 抓取 1 分鐘與 5 分鐘資料
-        df_1m = yf.download("NQ=F", interval="1m", period="60m")
+        df_1m = yf.download("NQ=F", interval="1m", period="1d")
         df_5m = yf.download("NQ=F", interval="5m", period="1d")
 
         if df_1m.empty or df_5m.empty:
