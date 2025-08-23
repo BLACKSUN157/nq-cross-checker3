@@ -33,10 +33,14 @@ def calc_macd(df, fast=12, slow=26, signal=9):
 
 # === 取得 MACD 狀態 ===
 def get_macd_state(df):
-    latest = df.iloc[-1]
-    if latest["MACD"] > latest["Signal"]:
+    if df.empty or "MACD" not in df or "Signal" not in df:
+        return "觀望"
+    latest_macd = df["MACD"].iloc[-1]
+    latest_signal = df["Signal"].iloc[-1]
+
+    if latest_macd > latest_signal:
         return "多頭"
-    elif latest["MACD"] < latest["Signal"]:
+    elif latest_macd < latest_signal:
         return "空頭"
     else:
         return "觀望"
