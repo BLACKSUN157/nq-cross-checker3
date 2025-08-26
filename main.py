@@ -12,8 +12,12 @@ TELEGRAM_CHAT_ID = '8163295591'
 # === Flask 初始化 ===
 app = Flask(__name__)
 
-# === 全域變數：紀錄上一次的狀態，避免重複發訊息 ===
+# === 全域變數 ===
 last_signal = None  
+in_position = None   # "多", "空", or None
+
+# === 指定的 5 個平倉價位 ===
+EXIT_LEVELS = [23416, 23371, 23613, 23645,23645 ]  # 這裡改成你要的指數
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -23,67 +27,64 @@ def send_telegram(msg):
     except Exception as e:
         print("Telegram 發送失敗:", e)
 
-# === 計算 MACD ===
-def calc_macd(df, fast=12, slow=26, signal=9):
+# === 計算 MACD + 均線 ===
+def calc_indicators(df, fast=12, slow=26, signal=9):
     df["EMA_fast"] = df["Close"].ewm(span=fast, adjust=False).mean()
     df["EMA_slow"] = df["Close"].ewm(span=slow, adjust=False).mean()
     df["MACD"] = df["EMA_fast"] - df["EMA_slow"]
     df["Signal"] = df["MACD"].ewm(span=signal, adjust=False).mean()
+    df["MA40"] = df["Close"].rolling(window=40).mean()
+    df["MA320"] = df["Close"].rolling(window=320).mean()
     return df
-
-# === 取得 MACD 狀態 ===
-def get_macd_state(df):
-    if df.empty or "MACD" not in df or "Signal" not in df:
-        return "觀望"
-    latest_macd = df["MACD"].iloc[-1]
-    latest_signal = df["Signal"].iloc[-1]
-
-    if latest_macd > latest_signal:
-        return "多頭"
-    elif latest_macd < latest_signal:
-        return "空頭"
-    else:
-        return "觀望"
 
 # === 主策略 ===
 def macd_strategy():
-    global last_signal
+    global last_signal, in_position
     try:
-        # 抓取 1 分鐘與 5 分鐘資料
-        df_1m = yf.download("NQ=F", interval="1m", period="1d")
-        df_5m = yf.download("NQ=F", interval="5m", period="1d")
+        # 只抓 5 分鐘資料
+        df = yf.download("NQ=F", interval="5m", period="2d")
 
-        if df_1m.empty or df_5m.empty:
+        if df.empty:
             print("資料不足")
             return
 
-        # 計算 MACD
-        df_1m = calc_macd(df_1m)
-        df_5m = calc_macd(df_5m)
-
-        state_1m = get_macd_state(df_1m)
-        state_5m = get_macd_state(df_5m)
+        df = calc_indicators(df)
+        latest = df.iloc[-1]
+        prev = df.iloc[-2]
 
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # === 判斷進出場邏輯 ===
-        if state_5m == "多頭" and state_1m == "多頭":
-            signal = "做多"
-            msg = f"✅ {now}\n5分多頭 + 1分多頭 → 進場 {signal}"
-        elif state_5m == "空頭" and state_1m == "空頭":
-            signal = "做空"
-            msg = f"✅ {now}\n5分空頭 + 1分空頭 → 進場 {signal}"
-        else:
-            signal = "觀望"
-            msg = f"❌ {now}\n1分與5分 MACD 不一致 → 出場 / 觀望\n5分:{state_5m} | 1分:{state_1m}"
+        # === 進場訊號 ===
+        signal = None
+        if prev["MACD"] < prev["Signal"] and latest["MACD"] > latest["Signal"]:
+            signal = "多"
+            msg = f"✅ {now}\n5分MACD黃金交叉 → 進場做多"
+        elif prev["MACD"] > prev["Signal"] and latest["MACD"] < latest["Signal"]:
+            signal = "空"
+            msg = f"✅ {now}\n5分MACD死亡交叉 → 進場做空"
 
-        # === 僅在訊號變化時發送 ===
-        if signal != last_signal:
+        # === 平倉條件 ===
+        close_price = latest["Close"]
+        near_ma40 = abs(close_price - latest["MA40"]) / close_price < 0.0007  # 0.07%
+        near_ma320 = abs(close_price - latest["MA320"]) / close_price < 0.0007
+        hit_exit_level = any(abs(close_price - lvl) < 13 for lvl in EXIT_LEVELS)  # 誤差 5 點內算命中
+
+        if in_position and (near_ma40 or near_ma320 or hit_exit_level):
+            msg = f"🔔 {now}\n指數 {close_price:.2f} 接近 MA40/MA320 或指定價位 → 平倉"
+            print(msg)
+            send_telegram(msg)
+            in_position = None
+            last_signal = None
+            return
+
+        # === 新訊號才發送 ===
+        if signal and signal != last_signal:
             print(msg)
             send_telegram(msg)
             last_signal = signal
+            in_position = signal
         else:
-            print(f"{now} 狀態維持: {signal} (不重複發送)")
+            print(f"{now} 狀態: {in_position or '觀望'} (無新訊號)")
 
     except Exception as e:
         print("程式錯誤:", e)
@@ -96,11 +97,12 @@ scheduler.start()
 
 @app.route("/")
 def home():
-    return "📈 MACD 多週期共振監控運行中 (每 30 秒檢查一次，狀態改變才推送)..."
+    return "📈 5分MACD 黃金交叉/死亡交叉策略運行中 (每 30 秒檢查一次)..."
 
 if __name__ == "__main__":
-    print("📉 MACD 多週期共振監控啟動，每 30 秒檢查一次... (Ctrl+C 可停止)")
+    print("📉 5分MACD 黃金交叉/死亡交叉監控啟動 (Ctrl+C 可停止)")
     app.run(host="0.0.0.0", port=8080)
+
 
 
 
