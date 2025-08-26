@@ -17,7 +17,7 @@ last_signal = None
 in_position = None   # "多", "空", or None
 
 # === 指定的 5 個平倉價位 ===
-EXIT_LEVELS = [23416, 23371, 23613, 23645,23645 ]  # 這裡改成你要的指數
+EXIT_LEVELS = [23416, 23371, 23613, 23645,23645]  # 你可以改這裡
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -64,10 +64,13 @@ def macd_strategy():
             msg = f"✅ {now}\n5分MACD死亡交叉 → 進場做空"
 
         # === 平倉條件 ===
-        close_price = latest["Close"]
-        near_ma40 = abs(close_price - latest["MA40"]) / close_price < 0.0007  # 0.07%
-        near_ma320 = abs(close_price - latest["MA320"]) / close_price < 0.0007
-        hit_exit_level = any(abs(close_price - lvl) < 13 for lvl in EXIT_LEVELS)  # 誤差 5 點內算命中
+        close_price = float(latest["Close"])
+        ma40 = float(latest["MA40"]) if not pd.isna(latest["MA40"]) else None
+        ma320 = float(latest["MA320"]) if not pd.isna(latest["MA320"]) else None
+
+        near_ma40 = ma40 is not None and abs(close_price - ma40) / close_price < 0.0007  # 0.07%
+        near_ma320 = ma320 is not None and abs(close_price - ma320) / close_price < 0.0007
+        hit_exit_level = any(abs(close_price - lvl) < 5 for lvl in EXIT_LEVELS)  # 誤差 5 點內算命中
 
         if in_position and (near_ma40 or near_ma320 or hit_exit_level):
             msg = f"🔔 {now}\n指數 {close_price:.2f} 接近 MA40/MA320 或指定價位 → 平倉"
@@ -102,6 +105,7 @@ def home():
 if __name__ == "__main__":
     print("📉 5分MACD 黃金交叉/死亡交叉監控啟動 (Ctrl+C 可停止)")
     app.run(host="0.0.0.0", port=8080)
+
 
 
 
