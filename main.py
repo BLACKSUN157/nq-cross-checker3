@@ -70,7 +70,7 @@ def macd_strategy():
 
         near_ma40 = ma40 is not None and abs(close_price - ma40) / close_price < 0.0007  # 0.07%
         near_ma320 = ma320 is not None and abs(close_price - ma320) / close_price < 0.0007
-        hit_exit_level = any(abs(close_price - lvl) < 5 for lvl in EXIT_LEVELS)  # 誤差 5 點內算命中
+        hit_exit_level = any(abs(close_price - lvl) < 13 for lvl in EXIT_LEVELS)  # 誤差 5 點內算命中
 
         if in_position and (near_ma40 or near_ma320 or hit_exit_level):
             msg = f"🔔 {now}\n指數 {close_price:.2f} 接近 MA40/MA320 或指定價位 → 平倉"
