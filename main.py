@@ -54,12 +54,18 @@ def macd_strategy():
 
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+        # === 把 MACD 和 Signal 轉 float，避免 Series 錯誤 ===
+        prev_macd = float(prev["MACD"].item()) if hasattr(prev["MACD"], "item") else float(prev["MACD"])
+        prev_signal = float(prev["Signal"].item()) if hasattr(prev["Signal"], "item") else float(prev["Signal"])
+        latest_macd = float(latest["MACD"].item()) if hasattr(latest["MACD"], "item") else float(latest["MACD"])
+        latest_signal = float(latest["Signal"].item()) if hasattr(latest["Signal"], "item") else float(latest["Signal"])
+
         # === 進場訊號 ===
         signal = None
-        if prev["MACD"] < prev["Signal"] and latest["MACD"] > latest["Signal"]:
+        if prev_macd < prev_signal and latest_macd > latest_signal:
             signal = "多"
             msg = f"✅ {now}\n5分MACD黃金交叉 → 進場做多"
-        elif prev["MACD"] > prev["Signal"] and latest["MACD"] < latest["Signal"]:
+        elif prev_macd > prev_signal and latest_macd < latest_signal:
             signal = "空"
             msg = f"✅ {now}\n5分MACD死亡交叉 → 進場做空"
 
@@ -70,7 +76,7 @@ def macd_strategy():
 
         near_ma40 = ma40 is not None and abs(close_price - ma40) / close_price < 0.0007  # 0.07%
         near_ma320 = ma320 is not None and abs(close_price - ma320) / close_price < 0.0007
-        hit_exit_level = any(abs(close_price - lvl) < 13 for lvl in EXIT_LEVELS)  # 誤差 5 點內算命中
+        hit_exit_level = any(abs(close_price - lvl) < 13 for lvl in EXIT_LEVELS)  # 誤差 13 點內算命中
 
         if in_position and (near_ma40 or near_ma320 or hit_exit_level):
             msg = f"🔔 {now}\n指數 {close_price:.2f} 接近 MA40/MA320 或指定價位 → 平倉"
@@ -105,6 +111,7 @@ def home():
 if __name__ == "__main__":
     print("📉 5分MACD 黃金交叉/死亡交叉監控啟動 (Ctrl+C 可停止)")
     app.run(host="0.0.0.0", port=8080)
+
 
 
 
