@@ -49,16 +49,16 @@ def macd_strategy():
             return
 
         df = calc_indicators(df)
-        latest = df.iloc[-1]
-        prev = df.iloc[-2]
+        latest = df.iloc[[-1]].copy()  # 保證是 DataFrame
+        prev = df.iloc[[-2]].copy()
 
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # === 把 MACD 和 Signal 轉 float，避免 Series 錯誤 ===
-        prev_macd = float(prev["MACD"].item()) if hasattr(prev["MACD"], "item") else float(prev["MACD"])
-        prev_signal = float(prev["Signal"].item()) if hasattr(prev["Signal"], "item") else float(prev["Signal"])
-        latest_macd = float(latest["MACD"].item()) if hasattr(latest["MACD"], "item") else float(latest["MACD"])
-        latest_signal = float(latest["Signal"].item()) if hasattr(latest["Signal"], "item") else float(latest["Signal"])
+        prev_macd = float(prev["MACD"].iloc[0])
+        prev_signal = float(prev["Signal"].iloc[0])
+        latest_macd = float(latest["MACD"].iloc[0])
+        latest_signal = float(latest["Signal"].iloc[0])
 
         # === 進場訊號 ===
         signal = None
@@ -70,9 +70,9 @@ def macd_strategy():
             msg = f"✅ {now}\n5分MACD死亡交叉 → 進場做空"
 
         # === 平倉條件 ===
-        close_price = float(latest["Close"])
-        ma40 = float(latest["MA40"]) if not pd.isna(latest["MA40"]) else None
-        ma320 = float(latest["MA320"]) if not pd.isna(latest["MA320"]) else None
+        close_price = float(latest["Close"].iloc[0])
+        ma40 = None if pd.isna(latest["MA40"].iloc[0]) else float(latest["MA40"].iloc[0])
+        ma320 = None if pd.isna(latest["MA320"].iloc[0]) else float(latest["MA320"].iloc[0])
 
         near_ma40 = ma40 is not None and abs(close_price - ma40) / close_price < 0.0007  # 0.07%
         near_ma320 = ma320 is not None and abs(close_price - ma320) / close_price < 0.0007
