@@ -17,7 +17,7 @@ last_signal = None
 in_position = None   # "多", "空", or None
 
 # === 指定的 5 個平倉價位 ===
-EXIT_LEVELS = [23416, 23371, 23613, 23645,23645]  # 你可以改這裡
+EXIT_LEVELS = [23416, 23371, 23613, 23645, 23645]  # 你可以改這裡
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -55,10 +55,10 @@ def macd_strategy():
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # === 把 MACD 和 Signal 轉 float，避免 Series 錯誤 ===
-        prev_macd = float(prev["MACD"].iloc[0])
-        prev_signal = float(prev["Signal"].iloc[0])
-        latest_macd = float(latest["MACD"].iloc[0])
-        latest_signal = float(latest["Signal"].iloc[0])
+        prev_macd = prev["MACD"].iloc[0].item()
+        prev_signal = prev["Signal"].iloc[0].item()
+        latest_macd = latest["MACD"].iloc[0].item()
+        latest_signal = latest["Signal"].iloc[0].item()
 
         # === 進場訊號 ===
         signal = None
@@ -70,9 +70,9 @@ def macd_strategy():
             msg = f"✅ {now}\n5分MACD死亡交叉 → 進場做空"
 
         # === 平倉條件 ===
-        close_price = float(latest["Close"].iloc[0])
-        ma40 = None if pd.isna(latest["MA40"].iloc[0]) else float(latest["MA40"].iloc[0])
-        ma320 = None if pd.isna(latest["MA320"].iloc[0]) else float(latest["MA320"].iloc[0])
+        close_price = latest["Close"].iloc[0].item()
+        ma40 = None if pd.isna(latest["MA40"].iloc[0]) else latest["MA40"].iloc[0].item()
+        ma320 = None if pd.isna(latest["MA320"].iloc[0]) else latest["MA320"].iloc[0].item()
 
         near_ma40 = ma40 is not None and abs(close_price - ma40) / close_price < 0.0007  # 0.07%
         near_ma320 = ma320 is not None and abs(close_price - ma320) / close_price < 0.0007
@@ -111,6 +111,7 @@ def home():
 if __name__ == "__main__":
     print("📉 5分MACD 黃金交叉/死亡交叉監控啟動 (Ctrl+C 可停止)")
     app.run(host="0.0.0.0", port=8080)
+
 
 
 
