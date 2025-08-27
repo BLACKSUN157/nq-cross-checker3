@@ -42,7 +42,7 @@ def macd_strategy():
     global last_signal, in_position
     try:
         # 只抓 5 分鐘資料
-        df = yf.download("NQ=F", interval="5m", period="2d")
+        df = yf.download("NQ=F", interval="5m", period="2d", auto_adjust=False)
 
         if df.empty:
             print("資料不足")
