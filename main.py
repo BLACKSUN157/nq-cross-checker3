@@ -13,11 +13,14 @@ TELEGRAM_CHAT_ID = '8163295591'
 app = Flask(__name__)
 
 # === 全域變數 ===
-last_signal = None  
-in_position = None   # "多", "空", or None
-
-# === 指定的 5 個平倉價位 ===
-EXIT_LEVELS = [23416, 23371, 23613, 23645, 23645]  # 你可以改這裡
+# 每個標的獨立追蹤狀態
+market_states = {
+    "NQ=F": {"last_signal": None, "in_position": None},
+    "GC=F": {"last_signal": None, "in_position": None},
+    "ES=F": {"last_signal": None, "in_position": None},
+    "YM=F": {"last_signal": None, "in_position": None},
+    "^TWII": {"last_signal": None, "in_position": None},
+}
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -37,15 +40,16 @@ def calc_indicators(df, fast=12, slow=26, signal=9):
     df["MA320"] = df["Close"].rolling(window=320).mean()
     return df
 
-# === 主策略 ===
-def macd_strategy():
-    global last_signal, in_position
+# === 主策略（多標的） ===
+def macd_strategy(symbol="NQ=F"):
     try:
+        state = market_states[symbol]
+
         # 只抓 5 分鐘資料
-        df = yf.download("NQ=F", interval="5m", period="2d", auto_adjust=False)
+        df = yf.download(symbol, interval="5m", period="2d", auto_adjust=False)
 
         if df.empty:
-            print("資料不足")
+            print(f"{symbol} 資料不足")
             return
 
         df = calc_indicators(df)
@@ -64,53 +68,54 @@ def macd_strategy():
         signal = None
         if prev_macd < prev_signal and latest_macd > latest_signal:
             signal = "多"
-            msg = f"✅ {now}\n5分MACD黃金交叉 → 進場做多"
+            msg = f"✅ {now}\n{symbol} 5分MACD黃金交叉 → 進場做多"
         elif prev_macd > prev_signal and latest_macd < latest_signal:
             signal = "空"
-            msg = f"✅ {now}\n5分MACD死亡交叉 → 進場做空"
+            msg = f"✅ {now}\n{symbol} 5分MACD死亡交叉 → 進場做空"
 
-        # === 平倉條件 ===
+        # === 平倉條件 (只看均線，不再考慮 EXIT_LEVELS) ===
         close_price = latest["Close"].iloc[0].item()
         ma40 = None if pd.isna(latest["MA40"].iloc[0]) else latest["MA40"].iloc[0].item()
         ma320 = None if pd.isna(latest["MA320"].iloc[0]) else latest["MA320"].iloc[0].item()
 
         near_ma40 = ma40 is not None and abs(close_price - ma40) / close_price < 0.0007  # 0.07%
         near_ma320 = ma320 is not None and abs(close_price - ma320) / close_price < 0.0007
-        hit_exit_level = any(abs(close_price - lvl) < 13 for lvl in EXIT_LEVELS)  # 誤差 13 點內算命中
 
-        if in_position and (near_ma40 or near_ma320 or hit_exit_level):
-            msg = f"🔔 {now}\n指數 {close_price:.2f} 接近 MA40/MA320 或指定價位 → 平倉"
+        if state["in_position"] and (near_ma40 or near_ma320):
+            msg = f"🔔 {now}\n{symbol} 指數 {close_price:.2f} 接近 MA40/MA320 → 平倉"
             print(msg)
             send_telegram(msg)
-            in_position = None
-            last_signal = None
+            state["in_position"] = None
+            state["last_signal"] = None
             return
 
         # === 新訊號才發送 ===
-        if signal and signal != last_signal:
+        if signal and signal != state["last_signal"]:
             print(msg)
             send_telegram(msg)
-            last_signal = signal
-            in_position = signal
+            state["last_signal"] = signal
+            state["in_position"] = signal
         else:
-            print(f"{now} 狀態: {in_position or '觀望'} (無新訊號)")
+            print(f"{now} {symbol} 狀態: {state['in_position'] or '觀望'} (無新訊號)")
 
     except Exception as e:
-        print("程式錯誤:", e)
-        send_telegram(f"❗策略執行錯誤: {e}")
+        print(f"{symbol} 程式錯誤:", e)
+        send_telegram(f"❗{symbol} 策略執行錯誤: {e}")
 
-# === Scheduler (每 30 秒執行一次) ===
+# === Scheduler (每 30 秒執行一次，每個標的跑一次) ===
 scheduler = BackgroundScheduler()
-scheduler.add_job(macd_strategy, "interval", seconds=30)
+for symbol in market_states.keys():
+    scheduler.add_job(macd_strategy, "interval", seconds=30, args=[symbol])
 scheduler.start()
 
 @app.route("/")
 def home():
-    return "📈 5分MACD 黃金交叉/死亡交叉策略運行中 (每 30 秒檢查一次)..."
+    return "📈 多市場 MACD 策略運行中 (NQ=F, GC=F, ES=F, YM=F, ^TWII，每 30 秒檢查一次)..."
 
 if __name__ == "__main__":
-    print("📉 5分MACD 黃金交叉/死亡交叉監控啟動 (Ctrl+C 可停止)")
+    print("📉 多市場 MACD 監控啟動 (Ctrl+C 可停止)")
     app.run(host="0.0.0.0", port=8080)
+
 
 
 
