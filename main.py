@@ -3,7 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import yfinance as yf
 import pandas as pd
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # === Telegram 設定 ===
 TELEGRAM_TOKEN = '8116446503:AAEuE74_HF0pITQ0k7H5Dy3Dp9-WuMHWY94'
@@ -102,27 +102,22 @@ def macd_strategy(symbol="NQ=F"):
         print(f"{symbol} 程式錯誤:", e)
         send_telegram(f"❗{symbol} 策略執行錯誤: {e}")
 
-# === Scheduler (每 30 秒執行一次，每個標的跑一次) ===
+# === Scheduler (每 30 秒執行一次，每個標的錯開 5 秒) ===
 scheduler = BackgroundScheduler()
-for symbol in market_states.keys():
-    scheduler.add_job(macd_strategy, "interval", seconds=30, args=[symbol])
+for i, symbol in enumerate(market_states.keys()):
+    scheduler.add_job(
+        macd_strategy,
+        "interval",
+        seconds=30,
+        args=[symbol],
+        next_run_time=datetime.now() + timedelta(seconds=i * 5)  # ✅ 錯開 5 秒
+    )
 scheduler.start()
 
 @app.route("/")
 def home():
-    return "📈 多市場 MACD 策略運行中 (NQ=F, GC=F, ES=F, YM=F, ^TWII，每 30 秒檢查一次)..."
+    return "📈 多市場 MACD 策略運行中 (NQ=F, GC=F, ES=F, YM=F, ^TWII，每 30 秒檢查一次，任務錯開 5 秒)..."
 
 if __name__ == "__main__":
     print("📉 多市場 MACD 監控啟動 (Ctrl+C 可停止)")
     app.run(host="0.0.0.0", port=8080)
-
-
-
-
-
-
-
-
-
-
-
