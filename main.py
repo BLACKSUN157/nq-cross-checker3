@@ -46,7 +46,7 @@ def macd_strategy(symbol="NQ=F"):
         state = market_states[symbol]
 
         # 只抓 5 分鐘資料
-        df = yf.download(symbol, interval="5m", period="2d", auto_adjust=False)
+        df = yf.download(symbol, interval="30m", period="12d", auto_adjust=False)
 
         if df.empty:
             print(f"{symbol} 資料不足")
